@@ -1,146 +1,71 @@
 // src/screens/AddProjectScreen.js
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { db, auth } from '../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../config/firebaseConfig';
+import { collection, addDoc } from 'firebase/firestore';
 
 export default function AddProjectScreen({ navigation }) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [link, setLink] = useState('');
+  const [projectLink, setProjectLink] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('Game'); 
   const [loading, setLoading] = useState(false);
-  const [category, setCategory] = useState('Cover Buku');
 
-  const categoriesList = [
-    'Cover Buku',
-    'Poster',
-    'UI/UX Design',
-    'Logo / Branding',
-    'Banner / Pamflet',
-    'Ilustrasi 2D/3D',
-    'Web Development',
-    'Game Development',
-    'IoT / Robotics'
-  ];
+  const categories = ['Game', 'Website', 'Aplikasi', 'Desain', 'UI/UX', 'videografi', 'fotografi'];
 
-  const handleUpload = async () => {
-    // SEKARANG JUDUL, DESKRIPSI, DAN LINK PROYEK BERSIFAT WAJIB!
-    if (!title || !description || !link) {
-      alert('Judul, Deskripsi, dan Tautan Proyek wajib diisi!');
+  const handleUploadProject = async () => {
+    if (!title.trim() || !description.trim()) {
+      alert('Judul dan Deskripsi wajib dilengkapi!');
       return;
     }
+    const user = auth.currentUser;
+    if (!user) { alert('Sesi berakhir, silakan login ulang!'); return; }
 
     setLoading(true);
     try {
-      const user = auth.currentUser;
-      const creatorName = user?.displayName || user?.email?.split('@')[0] || 'Siswa SMK Telkom';
-
-      await addDoc(collection(db, "projects"), {
-        title: title,
-        category: category,
-        description: description,
-        link: link, // Wajib diisi
-        // Gambar jadi opsional, kalau kosong otomatis pakai gambar default Unsplash
-        image: imageUrl.trim() !== '' ? imageUrl : 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400', 
-        creator: creatorName,
-        userId: user?.uid,
-        createdAt: serverTimestamp()
+      await addDoc(collection(db, 'projects'), {
+        title, link: projectLink, image: imageUrl || 'https://via.placeholder.com/400x250.png?text=Telkom+Creation',
+        description, category, userId: user.uid, creator: user.displayName || 'Kreator Telkom', createdAt: new Date().toISOString(),
       });
-
-      alert('Karya berhasil di-upload ke Tel-Creation!');
-      
-      // Reset Form
-      setTitle('');
-      setDescription('');
-      setLink('');
-      setImageUrl('');
-      setCategory('Cover Buku');
-
-      if (navigation) {
-        navigation.navigate('Beranda');
-      }
-    } catch (error) {
-      console.error("Gagal mengupload karya: ", error);
-      alert('Terjadi kesalahan saat mengunggah karya.');
-    } finally {
-      setLoading(false);
-    }
+      alert('Selamat! Karyamu resmi meluncur ke etalase.');
+      setTitle(''); setProjectLink(''); setImageUrl(''); setDescription(''); setCategory('Game');
+      navigation.navigate('HomeSiswa');
+    } catch (e) {
+      alert(e.message);
+    } finally { setLoading(false); }
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Upload Karya Baru</Text>
-        <Text style={styles.headerSubtitle}>Pamerkan hasil kreativitas dan portofolio digital terbaikmu.</Text>
-      </View>
+      <Text style={styles.pageTitle}>Publikasikan Karya</Text>
+      <View style={styles.formCard}>
+        <Text style={styles.label}>Judul Proyek</Text>
+        <TextInput style={styles.input} placeholder="E.g., Virtual Reality Edu-Sains" value={title} onChangeText={setTitle} />
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Judul Karya</Text>
-        <TextInput 
-          placeholder="Contoh: Desain Cover Novel Fantasi" 
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <Text style={styles.label}>Pilih Jenis Kategori</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-          {categoriesList.map((item) => {
-            const isSelected = category === item;
+        <Text style={styles.label}>Pilih Sektor Kategori</Text>
+        <View style={styles.categoryContainer}>
+          {categories.map((cat) => {
+            const isSelected = category === cat;
             return (
-              <TouchableOpacity
-                key={item}
-                style={[styles.categoryBadge, isSelected && styles.categoryBadgeSelected]}
-                onPress={() => setCategory(item)}
-              >
-                <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>
-                  {item}
-                </Text>
+              <TouchableOpacity key={cat} style={[styles.badge, isSelected && styles.badgeSelected]} onPress={() => setCategory(cat)}>
+                <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{cat}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
 
-        {/* LINK PROYEK SEKARANG BERSIFAT WAJIB */}
-        <Text style={styles.label}>Tautan Proyek / Demo Eksternal</Text>
-        <TextInput 
-          placeholder="https://github.com/... atau https://figma.com/..." 
-          style={styles.input}
-          value={link}
-          onChangeText={setLink}
-        />
+        <Text style={styles.label}>Tautan Repositori / Demo</Text>
+        <TextInput style={styles.input} placeholder="https://github.com/..." value={projectLink} onChangeText={setProjectLink} autoCapitalize="none" />
 
-        {/* LINK GAMBAR SEKARANG BERSIFAT OPSIONAL */}
-        <Text style={styles.label}>Tautan Gambar Karya / URL (Opsional)</Text>
-        <TextInput 
-          placeholder="https://example.com/gambar-karyamu.jpg (Kosongkan jika tidak ada)" 
-          style={styles.input}
-          value={imageUrl}
-          onChangeText={setImageUrl}
-        />
+        <Text style={styles.label}>Tautan Gambar Mockup</Text>
+        <TextInput style={styles.input} placeholder="https://unsplash.com/..." value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" />
 
-        <Text style={styles.label}>Deskripsi Singkat Karya</Text>
-        <TextInput 
-          placeholder="Ceritakan latar belakang karya, konsep desain, atau teknologi/tools apa yang kamu gunakan..." 
-          style={[styles.input, styles.textArea]}
-          multiline={true}
-          numberOfLines={4}
-          textAlignVertical="top"
-          value={description}
-          onChangeText={setDescription}
-        />
+        <Text style={styles.label}>Abstrak & Spesifikasi Teknologi</Text>
+        <TextInput style={[styles.input, styles.textArea]} placeholder="Gunakan teknologi framework apa saja..." value={description} onChangeText={setDescription} multiline numberOfLines={5} />
 
-        <TouchableOpacity style={styles.btnSubmit} onPress={handleUpload} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <Ionicons name="cloud-upload-outline" size={20} color="white" style={{ marginRight: 8 }} />
-              <Text style={styles.btnText}>Publish Karya Sekarang</Text>
-            </>
-          )}
+        <TouchableOpacity style={styles.btnSubmit} onPress={handleUploadProject} disabled={loading}>
+          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Luncurkan Karya Sekarang</Text>}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -148,19 +73,17 @@ export default function AddProjectScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  header: { backgroundColor: '#E21921', padding: 25, paddingTop: 50, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: 'white' },
-  headerSubtitle: { fontSize: 12, color: 'white', opacity: 0.8, marginTop: 4, lineHeight: 18 },
-  form: { padding: 20, marginTop: 10 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 8, marginTop: 15 },
-  input: { borderWidth: 1, borderColor: '#DDD', borderRadius: 12, paddingHorizontal: 15, height: 48, fontSize: 13, color: '#000', backgroundColor: '#FAFAFA' },
-  textArea: { height: 100, paddingTop: 12, paddingBottom: 12 },
-  categoryScroll: { flexDirection: 'row', marginBottom: 5, paddingVertical: 5 },
-  categoryBadge: { backgroundColor: '#F0F0F0', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#EAEAEA' },
-  categoryBadgeSelected: { backgroundColor: '#E21921', borderColor: '#E21921' },
-  categoryText: { fontSize: 12, color: '#666', fontWeight: '500' },
-  categoryTextSelected: { color: 'white', fontWeight: 'bold' },
-  btnSubmit: { backgroundColor: '#E21921', height: 50, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 30, elevation: 3, shadowColor: '#E21921', shadowOpacity: 0.2, shadowRadius: 5 },
-  btnText: { color: 'white', fontSize: 14, fontWeight: 'bold' }
+  container: { flex: 1, backgroundColor: '#FAFAFC' },
+  pageTitle: { fontSize: 24, fontWeight: '900', color: '#1A1D20', marginTop: 60, marginHorizontal: 25, marginBottom: 5 },
+  formCard: { backgroundColor: '#FFF', margin: 20, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#EFEFEF', elevation: 2 },
+  label: { fontSize: 13, fontWeight: '700', color: '#2D3142', marginBottom: 8, marginTop: 15 },
+  input: { backgroundColor: '#F8F9FA', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#333', borderWidth: 1, borderColor: '#EFEFEF' },
+  textArea: { height: 110, textAlignVertical: 'top' },
+  categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 5 },
+  badge: { backgroundColor: '#F1F3F5', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, marginRight: 8, marginBottom: 8 },
+  badgeSelected: { backgroundColor: '#E21921' },
+  badgeText: { fontSize: 12, color: '#495057', fontWeight: '600' },
+  badgeTextSelected: { color: '#FFF', fontWeight: 'bold' },
+  btnSubmit: { backgroundColor: '#E21921', height: 52, borderRadius: 16, justifyContent: 'center', itemsAlign: 'center', marginTop: 30, shadowColor: '#E21921', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 10, alignItems: 'center' },
+  btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 }
 });
