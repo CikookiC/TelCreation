@@ -6,6 +6,8 @@ import { collection, addDoc } from 'firebase/firestore';
 
 export default function AddProjectScreen({ navigation }) {
   const [title, setTitle] = useState('');
+  const [creatorName, setCreatorName] = useState(''); // State untuk nama penerbit
+  const [nis, setNis] = useState('');                 // State untuk NIS
   const [projectLink, setProjectLink] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -15,57 +17,131 @@ export default function AddProjectScreen({ navigation }) {
   const categories = ['Game', 'Website', 'Aplikasi', 'Desain', 'UI/UX', 'videografi', 'fotografi'];
 
   const handleUploadProject = async () => {
-    if (!title.trim() || !description.trim()) {
-      alert('Judul dan Deskripsi wajib dilengkapi!');
+    // Validasi input wajib termasuk Nama dan NIS
+    if (!title.trim() || !creatorName.trim() || !nis.trim() || !description.trim()) {
+      alert('Judul, Nama, NIS, dan Deskripsi wajib dilengkapi!');
       return;
     }
     const user = auth.currentUser;
-    if (!user) { alert('Sesi berakhir, silakan login ulang!'); return; }
+    if (!user) { 
+      alert('Sesi berakhir, silakan login ulang!'); 
+      return; 
+    }
 
     setLoading(true);
     try {
       await addDoc(collection(db, 'projects'), {
-        title, link: projectLink, image: imageUrl || 'https://via.placeholder.com/400x250.png?text=Telkom+Creation',
-        description, category, userId: user.uid, creator: user.displayName || 'Kreator Telkom', createdAt: new Date().toISOString(),
+        title, 
+        creator: creatorName, // Menyimpan nama siswa yang diinput secara dinamis
+        nis,                  // Menyimpan NIS yang diinput secara dinamis
+        link: projectLink, 
+        image: imageUrl || 'https://via.placeholder.com/400x250.png?text=Telkom+Creation',
+        description, 
+        category, 
+        userId: user.uid, 
+        createdAt: new Date().toISOString(),
       });
       alert('Selamat! Karyamu resmi meluncur ke etalase.');
-      setTitle(''); setProjectLink(''); setImageUrl(''); setDescription(''); setCategory('Game');
+      
+      // Reset Form kembali kosong setelah upload berhasil
+      setTitle(''); setCreatorName(''); setNis(''); setProjectLink(''); setImageUrl(''); setDescription(''); setCategory('Game');
       navigation.navigate('HomeSiswa');
     } catch (e) {
       alert(e.message);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text style={styles.pageTitle}>Publikasikan Karya</Text>
+      {/* Judul Halaman */}
+      <Text style={styles.pageTitle}>Rilis Karya Baru</Text>
+      
       <View style={styles.formCard}>
+        {/* Input Judul */}
         <Text style={styles.label}>Judul Proyek</Text>
-        <TextInput style={styles.input} placeholder="E.g., Virtual Reality Edu-Sains" value={title} onChangeText={setTitle} />
+        <TextInput 
+          style={styles.input} 
+          placeholder="Nama aplikasi / game / desain" 
+          value={title} 
+          onChangeText={setTitle} 
+        />
 
+        {/* Pemilihan Kategori */}
         <Text style={styles.label}>Pilih Sektor Kategori</Text>
         <View style={styles.categoryContainer}>
           {categories.map((cat) => {
             const isSelected = category === cat;
             return (
-              <TouchableOpacity key={cat} style={[styles.badge, isSelected && styles.badgeSelected]} onPress={() => setCategory(cat)}>
+              <TouchableOpacity 
+                key={cat} 
+                style={[styles.badge, isSelected && styles.badgeSelected]} 
+                onPress={() => setCategory(cat)}
+              >
                 <Text style={[styles.badgeText, isSelected && styles.badgeTextSelected]}>{cat}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <Text style={styles.label}>Tautan Repositori / Demo</Text>
-        <TextInput style={styles.input} placeholder="https://github.com/..." value={projectLink} onChangeText={setProjectLink} autoCapitalize="none" />
+        {/* Input Nama Lengkap */}
+        <Text style={styles.label}>Nama Lengkap Siswa</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Masukkan nama lengkapmu" 
+          value={creatorName} 
+          onChangeText={setCreatorName} 
+        />
 
-        <Text style={styles.label}>Tautan Gambar Mockup</Text>
-        <TextInput style={styles.input} placeholder="https://unsplash.com/..." value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" />
+        {/* Input NIS */}
+        <Text style={styles.label}>Nomor Induk Siswa (NIS)</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="Masukkan NIS aktif" 
+          value={nis} 
+          onChangeText={setNis} 
+          keyboardType="numeric"
+        />
 
-        <Text style={styles.label}>Abstrak & Spesifikasi Teknologi</Text>
-        <TextInput style={[styles.input, styles.textArea]} placeholder="Gunakan teknologi framework apa saja..." value={description} onChangeText={setDescription} multiline numberOfLines={5} />
+        {/* Input Tautan Link */}
+        <Text style={styles.label}>Link Karya</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="https://..." 
+          value={projectLink} 
+          onChangeText={setProjectLink} 
+          autoCapitalize="none" 
+        />
 
+        {/* Input Gambar Sampul */}
+        <Text style={styles.label}>URL Gambar Sampul (Opsional)</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="https://..." 
+          value={imageUrl} 
+          onChangeText={setImageUrl} 
+          autoCapitalize="none" 
+        />
+
+        {/* Input Deskripsi Singkat */}
+        <Text style={styles.label}>Deskripsi Singkat</Text>
+        <TextInput 
+          style={[styles.input, styles.textArea]} 
+          placeholder="Jelaskan fitur atau teknologi yang kamu pakai..." 
+          value={description} 
+          onChangeText={setDescription} 
+          multiline 
+          numberOfLines={5} 
+        />
+
+        {/* Tombol Aksi Submit */}
         <TouchableOpacity style={styles.btnSubmit} onPress={handleUploadProject} disabled={loading}>
-          {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Luncurkan Karya Sekarang</Text>}
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.btnText}>Sebarkan Karya Sekarang</Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -74,7 +150,7 @@ export default function AddProjectScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFC' },
-  pageTitle: { fontSize: 24, fontWeight: '900', color: '#1A1D20', marginTop: 60, marginHorizontal: 25, marginBottom: 5 },
+  pageTitle: { fontSize: 24, fontWeight: '900', color: '#E21921', marginTop: 60, marginHorizontal: 25, marginBottom: 5 },
   formCard: { backgroundColor: '#FFF', margin: 20, padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#EFEFEF', elevation: 2 },
   label: { fontSize: 13, fontWeight: '700', color: '#2D3142', marginBottom: 8, marginTop: 15 },
   input: { backgroundColor: '#F8F9FA', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 14, color: '#333', borderWidth: 1, borderColor: '#EFEFEF' },
@@ -84,6 +160,6 @@ const styles = StyleSheet.create({
   badgeSelected: { backgroundColor: '#E21921' },
   badgeText: { fontSize: 12, color: '#495057', fontWeight: '600' },
   badgeTextSelected: { color: '#FFF', fontWeight: 'bold' },
-  btnSubmit: { backgroundColor: '#E21921', height: 52, borderRadius: 16, justifyContent: 'center', itemsAlign: 'center', marginTop: 30, shadowColor: '#E21921', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 10, alignItems: 'center' },
+  btnSubmit: { backgroundColor: '#E21921', height: 52, borderRadius: 16, justifyContent: 'center', marginTop: 30, shadowColor: '#E21921', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 10, alignItems: 'center' },
   btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 }
 });

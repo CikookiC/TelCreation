@@ -12,7 +12,7 @@ export default function ProfilePublikScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Guest Console</Text>
+        <Text style={styles.headerTitle}>Publik Dashboard</Text>
       </View>
 
       <View style={styles.profileCard}>
